@@ -742,6 +742,8 @@ static bool AppInitServers()
     return true;
 }
 
+int32_t komodo_init();
+
 // Parameter interaction based on rules
 void InitParameterInteraction()
 {
@@ -809,6 +811,8 @@ void InitParameterInteraction()
     // specified in default section of config file, but not overridden
     // on the command line or in this network's section of the config file.
     gArgs.WarnForSectionOnlyArgs();
+
+    komodo_init();
 }
 
 static std::string ResolveErrMsg(const char * const optname, const std::string& strBind)

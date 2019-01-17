@@ -27,7 +27,7 @@ int32_t komodo_dpowconfs(int32_t txheight,int32_t numconfs)
 {
     // DPoW confs are on by default
     int32_t dpowconfs = 1;
-    DPOWCONFS = GetArg("-dpowconfs",dpowconfs);
+    DPOWCONFS = gArgs.GetArg("-dpowconfs",dpowconfs);
     if ( DPOWCONFS != 0 && txheight > 0 && numconfs > 0 )
     {
         if ( NOTARIZED_HEIGHT > 0 )

@@ -40,7 +40,7 @@
         } else return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d", __func__,nHeight, notarized_height));
     }
 */
-/* add to getinfo
+/* add to getinfo or getblockchaininfo
 {
     int32_t komodo_prevMoMheight();
     extern uint256 NOTARIZED_HASH,NOTARIZED_DESTTXID,NOTARIZED_MOM;

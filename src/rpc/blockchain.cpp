@@ -42,6 +42,7 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include "komodo_rpcblockchain.h"
 
 struct CUpdatedBlock
 {
@@ -1233,8 +1234,16 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
         );
 
     LOCK(cs_main);
-
+    int32_t komodo_prevMoMheight();
+    extern uint256 NOTARIZED_HASH,NOTARIZED_DESTTXID,NOTARIZED_MOM;
+    extern int32_t NOTARIZED_HEIGHT,NOTARIZED_MOMDEPTH;
     UniValue obj(UniValue::VOBJ);
+    obj.pushKV("notarizedhash",         NOTARIZED_HASH.GetHex());
+    obj.pushKV("notarizedtxid",         NOTARIZED_DESTTXID.GetHex());
+    obj.pushKV("notarized",             (int)NOTARIZED_HEIGHT);
+    obj.pushKV("prevMoMheight",         (int)komodo_prevMoMheight());
+    obj.pushKV("notarized_MoMdepth",    (int)NOTARIZED_MOMDEPTH);
+    obj.pushKV("notarized_MoM",         NOTARIZED_MOM.GetHex());
     obj.pushKV("chain",                 Params().NetworkIDString());
     obj.pushKV("blocks",                (int)chainActive.Height());
     obj.pushKV("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1);
@@ -2205,6 +2214,8 @@ static const CRPCCommand commands[] =
 
     { "blockchain",         "preciousblock",          &preciousblock,          {"blockhash"} },
     { "blockchain",         "scantxoutset",           &scantxoutset,           {"action", "scanobjects"} },
+    { "blockchain",         "calc_MoM",               &calc_MoM,               {"height", "MoMdepth"}  },
+    { "blockchain",         "height_MoM",             &height_MoM,             {"height"}  },
 
     /* Not shown in help */
     { "hidden",             "invalidateblock",        &invalidateblock,        {"blockhash"} },
