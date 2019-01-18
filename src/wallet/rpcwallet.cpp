@@ -41,6 +41,24 @@
 int32_t komodo_dpowconfs(int32_t height,int32_t numconfs);
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 
+int tx_height( const uint256 &hash ){
+    int nHeight = 0;
+    CTransaction tx;
+    uint256 hashBlock;
+    if (!GetTransaction(hash, tx, hashBlock, true)) {
+        fprintf(stderr,"tx hash %s does not exist!\n", hash.ToString().c_str() );
+    }
+
+    BlockMap::const_iterator it = mapBlockIndex.find(hashBlock);
+    if (it != mapBlockIndex.end()) {
+        nHeight = it->second->GetHeight();
+        fprintf(stderr,"blockHash %s height %d\n",hashBlock.ToString().c_str(), nHeight);
+    } else {
+        fprintf(stderr,"block hash %s does not exist!\n", hashBlock.ToString().c_str() );
+    }
+    return nHeight;
+}
+
 bool GetWalletNameFromJSONRPCRequest(const JSONRPCRequest& request, std::string& wallet_name)
 {
     if (request.URI.substr(0, WALLET_ENDPOINT_BASE.size()) == WALLET_ENDPOINT_BASE) {
@@ -1676,9 +1694,11 @@ struct tallyitem
     int nConf;
     std::vector<uint256> txids;
     bool fIsWatchonly;
+    int nHeight;
     tallyitem()
     {
         nAmount = 0;
+        nHeight = 0;
         nConf = std::numeric_limits<int>::max();
         fIsWatchonly = false;
     }
@@ -1719,7 +1739,9 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
         if (wtx.IsCoinBase() || !CheckFinalTx(*wtx.tx))
             continue;
 
-        int nDepth = wtx.GetDepthInMainChain();
+        // Filter by dpowconfs, so returned data is all notarized
+        int nHeight = tx_height(pairWtx.first);
+        int nDepth = komodo_dpowconfs(nHeight, wtx.GetDepthInMainChain());
         if (nDepth < nMinDepth)
             continue;
 
@@ -1795,7 +1817,8 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
             obj.pushKV("address",       EncodeDestination(address));
             obj.pushKV("account",       label);
             obj.pushKV("amount",        ValueFromAmount(nAmount));
-            obj.pushKV("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("rawconfirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             obj.pushKV("label", label);
             UniValue transactions(UniValue::VARR);
             if (it != mapTally.end())
@@ -1821,7 +1844,8 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
                 obj.pushKV("involvesWatchonly", true);
             obj.pushKV("account",       entry.first);
             obj.pushKV("amount",        ValueFromAmount(nAmount));
-            obj.pushKV("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("confirmations",    (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("rawconfirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             obj.pushKV("label",         entry.first);
             ret.push_back(obj);
         }
@@ -1993,6 +2017,9 @@ static void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const
         }
     }
 
+    // Filter by dpowconfs, so returned data is all notarized
+    int nHeight = tx_height(wtx.block_height, first);
+    int nDepth = komodo_dpowconfs(nHeight, wtx.GetDepthInMainChain());
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
     {
