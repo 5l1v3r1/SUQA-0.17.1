@@ -1079,7 +1079,14 @@ void komodo_connectblock(CBlockIndex *pindex,CBlock& block)
 
             // this allows testing dpowconfs in regtest mode
             if ( Params().NetworkIDString() == "regtest" && ( height%7 == 0) ) {
-                notarized = 1;
+                notarized          = 1;
+                NOTARIZED_HEIGHT   = height;
+                NOTARIZED_HASH     = block.GetHash();
+                NOTARIZED_DESTTXID = txhash;
+            }
+            // this allows testing dpowconfs on testnet
+            if ( Params().NetworkIDString() == "test" && ( height%10 == 0) ) {
+                notarized          = 1;
                 NOTARIZED_HEIGHT   = height;
                 NOTARIZED_HASH     = block.GetHash();
                 NOTARIZED_DESTTXID = txhash;
