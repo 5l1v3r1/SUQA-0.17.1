@@ -80,7 +80,7 @@ typedef union _bits256 bits256;
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-void ImportAddress(const CKredsAddress& address, const string& strLabel);
+void ImportAddress(const CAddress& address, const std::string& strLabel);
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -96,7 +96,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     }
     else
     {
-        CWallet * const pwallet = pwalletMain;
+        CWallet * const pwallet = vpwallets[0];
         if ( pwallet != 0 )
         {
             auto it = pwallet->mapWallet.find(txid);
@@ -124,8 +124,8 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
 
 int32_t komodo_importaddress(std::string addr)
 {
-    CKredsAddress address(addr);
-    CWallet * const pwallet = pwalletMain;
+    CAddress address(addr);
+    CWallet * const pwallet = vpwallets[0];
     if ( pwallet != 0 )
     {
         LOCK2(cs_main, pwallet->cs_wallet);
@@ -616,12 +616,12 @@ void komodo_importpubkeys()
             pubkey = (char*) Notaries_elected1[i][offset];
 
             const std::vector<unsigned char> vPubkey(pubkey, pubkey + m);
-            std::string addr = CKredsAddress(CPubKey(ParseHex(pubkey)).GetID()).ToString();
+            std::string addr = CAddress(CPubKey(ParseHex(pubkey)).GetID()).ToString();
 
             //fprintf(stderr,"pubkey=%s, addr=%s\n", pubkey, addr.c_str() );
 
             if ( (val= komodo_importaddress(addr)) < 0 )
-                LogPrint("dpow","dpow: error importing (%s)\n",addr.c_str());
+                fprintf(stderr,"dpow: error importing (%s)\n",addr.c_str());
             else if ( val == 0 )
                 dispflag++;
         }
@@ -632,9 +632,9 @@ void komodo_importpubkeys()
 
 int32_t komodo_init()
 {
-    NOTARY_PUBKEY = GetArg("-pubkey", "");
+    NOTARY_PUBKEY = gArgs.GetArg("-pubkey", "");
     decode_hex(NOTARY_PUBKEY33,33,(char *)NOTARY_PUBKEY.c_str());
-    if ( GetBoolArg("-txindex", DEFAULT_TXINDEX) == 0 )
+    if ( gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX) == 0 )
     {
         //fprintf(stderr,"txindex is off, import notary pubkeys\n");
         KOMODO_NEEDPUBKEYS = 1;
@@ -874,7 +874,7 @@ void komodo_notarized_update(int32_t nHeight,int32_t notarized_height,uint256 no
         sep = "/";
 #endif
         sprintf(fname,"%s%snotarizations%s",GetDefaultDataDir().string().c_str(), sep.c_str(), suffix.c_str());
-        LogPrint("dpow","dpow: fname.(%s)\n",fname);
+        fprintf(stderr,"dpow: fname.(%s)\n",fname);
         if ( (fp= fopen(fname,"rb+")) == 0 )
             fp = fopen(fname,"wb+");
         else

@@ -1078,7 +1078,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     } else {
         int64_t confirmations = (int64_t)(pindex->nHeight - coin.nHeight + 1);
         ret.pushKV("rawconfirmations", confirmations);
-        ret.pushKV("confirmations", komodo_dpowconfs(blockindex->nHeight,confirmations));
+        ret.pushKV("confirmations", komodo_dpowconfs(pindex->nHeight,confirmations));
     }
     ret.pushKV("value", ValueFromAmount(coin.out.nValue));
     UniValue o(UniValue::VOBJ);

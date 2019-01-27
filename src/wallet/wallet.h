@@ -33,6 +33,8 @@
 #include <utility>
 #include <vector>
 
+extern std::vector<std::shared_ptr<CWallet>> vpwallets;
+
 bool AddWallet(const std::shared_ptr<CWallet>& wallet);
 bool RemoveWallet(const std::shared_ptr<CWallet>& wallet);
 bool HasWallets();
