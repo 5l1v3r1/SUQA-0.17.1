@@ -144,7 +144,7 @@ int32_t komodo_importaddress(std::string addr)
                 return(1);
             }
         }
-        LogPrint("dpow","%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),address.IsValid());
+        fprintf(stderr,"%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),address.IsValid());
     }
     return(-1);
 }
