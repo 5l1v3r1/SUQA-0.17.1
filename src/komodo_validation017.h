@@ -96,7 +96,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     }
     else
     {
-        CWallet * const pwallet = vpwallets[0];
+        std::shared_ptr<CWallet> pwallet = GetWallets()[0];
         if ( pwallet != 0 )
         {
             auto it = pwallet->mapWallet.find(txid);
@@ -125,7 +125,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
 int32_t komodo_importaddress(std::string addr)
 {
     CAddress address(addr);
-    CWallet * const pwallet = vpwallets[0];
+    std::shared_ptr<CWallet> pwallet = GetWallets()[0];
     if ( pwallet != 0 )
     {
         LOCK2(cs_main, pwallet->cs_wallet);
