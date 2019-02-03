@@ -155,6 +155,8 @@ BASE_SCRIPTS = [
     'feature_config_args.py',
     'rpc_help.py',
     'feature_help.py',
+    'dpow.py',
+    'dpowconfs.py',
     # Don't append tests at the end to avoid merge conflicts
     # Put them in a random line within the section that fits their approximate run-time
 ]
