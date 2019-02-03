@@ -6,20 +6,9 @@
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, initialize_datadir
 
-
 class DPoWTest(BitcoinTestFramework):
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_datadir(self.options.tmpdir, self.num_nodes)
-
-    def setup_network(self):
-        self.nodes = []
-        self.is_network_split = False
-        self.nodes.append(self.start_node(0, self.options.tmpdir))
-        self.sync_all()
-
     def set_test_params(self):
+        self.setup_clean_chain = False
         self.num_nodes = 1
 
     def run_test(self):
