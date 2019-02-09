@@ -80,7 +80,7 @@ typedef union _bits256 bits256;
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-void ImportAddress(const CAddress& address, const std::string& strLabel);
+void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -124,7 +124,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
 
 int32_t komodo_importaddress(std::string addr)
 {
-    CAddress address(addr);
+    const CTxDestination& address = DecodeDestination(addr);
     std::shared_ptr<CWallet> pwallet = GetWallets()[0];
     if ( pwallet != 0 )
     {
@@ -140,7 +140,7 @@ int32_t komodo_importaddress(std::string addr)
             else
             {
                 //printf("komodo_importaddress %s\n",addr.c_str());
-                ImportAddress( address, addr);
+                ImportAddress(pwallet, address, addr);
                 return(1);
             }
         }
@@ -616,7 +616,7 @@ void komodo_importpubkeys()
             pubkey = (char*) Notaries_elected1[i][offset];
 
             const std::vector<unsigned char> vPubkey(pubkey, pubkey + m);
-            std::string addr = CAddress(CPubKey(ParseHex(pubkey)).GetID()).ToString();
+            std::string addr = EncodeDestination(CPubKey(ParseHex(pubkey)).GetID());
 
             //fprintf(stderr,"pubkey=%s, addr=%s\n", pubkey, addr.c_str() );
 
