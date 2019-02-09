@@ -121,7 +121,6 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
         fprintf(stderr,"gettxout_scriptPubKey ht.%d n.%d > voutsize.%d\n",height,n,(int32_t)tx->vout.size());
     return(-1);
 }
-
 int32_t komodo_importaddress(std::string addr)
 {
     const CTxDestination& address = DecodeDestination(addr);
@@ -129,7 +128,7 @@ int32_t komodo_importaddress(std::string addr)
     if ( pwallet != 0 )
     {
         LOCK2(cs_main, pwallet->cs_wallet);
-        if ( address.IsValidDestination() )
+        if ( IsValidDestination(address) )
         {
             isminetype mine = IsMine(*pwallet, address.Get());
             if ( (mine & ISMINE_SPENDABLE) != 0 || (mine & ISMINE_WATCH_ONLY) != 0 )
@@ -144,7 +143,7 @@ int32_t komodo_importaddress(std::string addr)
                 return(1);
             }
         }
-        fprintf(stderr,"%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),address.IsValid());
+        fprintf(stderr,"%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),IsValidDestination(address));
     }
     return(-1);
 }
