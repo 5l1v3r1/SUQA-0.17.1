@@ -1808,6 +1808,7 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
         {
             tallyitem& _item = label_tally[label];
             _item.nAmount += nAmount;
+            _item.nHeight = std::min(_item.nHeight, nHeight);
             _item.nConf = std::min(_item.nConf, nConf);
             _item.fIsWatchonly = fIsWatchonly;
         }
@@ -1820,7 +1821,7 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
             obj.pushKV("account",       label);
             obj.pushKV("amount",        ValueFromAmount(nAmount));
             obj.pushKV("rawconfirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
-            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
             obj.pushKV("label", label);
             UniValue transactions(UniValue::VARR);
             if (it != mapTally.end())
@@ -1840,13 +1841,14 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
         for (const auto& entry : label_tally)
         {
             CAmount nAmount = entry.second.nAmount;
-            int nConf = entry.second.nConf;
+            int nConf   = entry.second.nConf;
+            int nHeight = entry.second.nHeight;
             UniValue obj(UniValue::VOBJ);
             if (entry.second.fIsWatchonly)
                 obj.pushKV("involvesWatchonly", true);
             obj.pushKV("account",       entry.first);
             obj.pushKV("amount",        ValueFromAmount(nAmount));
-            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
             obj.pushKV("rawconfirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             obj.pushKV("label",         entry.first);
             ret.push_back(obj);
