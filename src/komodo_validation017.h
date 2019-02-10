@@ -96,7 +96,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     }
     else
     {
-        std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
+        std::shared_ptr<CWallet> const wallet = GetWallets()[0];
         CWallet* const pwallet = wallet.get();
         if ( pwallet != 0 )
         {
@@ -125,7 +125,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
 int32_t komodo_importaddress(std::string addr)
 {
     const CTxDestination& address = DecodeDestination(addr);
-    //CWallet* pwallet = GetWallets()[0];
+    std::shared_ptr<CWallet> const wallet = GetWallets()[0];
     CWallet* const pwallet = wallet.get();
     if ( pwallet != 0 )
     {
