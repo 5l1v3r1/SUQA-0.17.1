@@ -1795,11 +1795,13 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
         CAmount nAmount = 0;
         int nConf = std::numeric_limits<int>::max();
         bool fIsWatchonly = false;
+        int nHeight = 0;
         if (it != mapTally.end())
         {
             nAmount = (*it).second.nAmount;
             nConf = (*it).second.nConf;
             fIsWatchonly = (*it).second.fIsWatchonly;
+            nHeight = (*it).second.nHeight;
         }
 
         if (by_label)
@@ -1844,7 +1846,7 @@ static UniValue ListReceived(CWallet * const pwallet, const UniValue& params, bo
                 obj.pushKV("involvesWatchonly", true);
             obj.pushKV("account",       entry.first);
             obj.pushKV("amount",        ValueFromAmount(nAmount));
-            obj.pushKV("confirmations",    (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
+            obj.pushKV("confirmations", komodo_dpowconfs( nHeight, (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             obj.pushKV("rawconfirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf));
             obj.pushKV("label",         entry.first);
             ret.push_back(obj);
