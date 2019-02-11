@@ -53,7 +53,7 @@
 
 #define MICRO 0.000001
 #define MILLI 0.001
-#include "komodo_validation017.h"
+//#include "komodo_validation017.h"
 
 CScript devScript;
 
