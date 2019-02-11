@@ -3652,7 +3652,7 @@ static UniValue listunspent(const JSONRPCRequest& request)
 
         entry.pushKV("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end()));
         entry.pushKV("amount", ValueFromAmount(out.tx->tx->vout[out.i].nValue));
-        entry.pushKV("confirmations", komodo_dpowconfs(blockindex->nHeight,out.nDepth));
+        entry.pushKV("confirmations", komodo_dpowconfs(chainActive.Height(),out.nDepth));
         entry.pushKV("rawconfirmations", out.nDepth);
         entry.pushKV("spendable", out.fSpendable);
         entry.pushKV("solvable", out.fSolvable);
