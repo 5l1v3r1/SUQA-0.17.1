@@ -82,15 +82,7 @@ struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
 
-void ImportScript(CWallet* const pwallet, const CScript& script, const std::string& strLabel, bool isRedeemScript);
-void ImportAddress2(CWallet* const pwallet, const CTxDestination& dest, const std::string& strLabel) 
-{
-    CScript script = GetScriptForDestination(dest);
-    ImportScript(pwallet, script, strLabel, false);
-    // add to address book or update label
-    if (IsValidDestination(dest))
-        pwallet->SetAddressBook(dest, strLabel, "receive");
-}
+extern int32_t komodo_importaddress(std::string addr);
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -130,34 +122,6 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     }
     else if ( tx != 0 )
         fprintf(stderr,"gettxout_scriptPubKey ht.%d n.%d > voutsize.%d\n",height,n,(int32_t)tx->vout.size());
-    return(-1);
-}
-
-int32_t komodo_importaddress(std::string addr)
-{
-    const CTxDestination& address = DecodeDestination(addr);
-    std::shared_ptr<CWallet> const wallet = GetWallets()[0];
-    CWallet* const pwallet = wallet.get();
-    if ( pwallet != 0 )
-    {
-        LOCK2(cs_main, pwallet->cs_wallet);
-        if ( IsValidDestination(address) )
-        {
-            isminetype mine = IsMine(*pwallet, address);
-            if ( (mine & ISMINE_SPENDABLE) != 0 || (mine & ISMINE_WATCH_ONLY) != 0 )
-            {
-                //printf("komodo_importaddress %s already there\n",EncodeDestination(address).c_str());
-                return(0);
-            }
-            else
-            {
-                //printf("komodo_importaddress %s\n",addr.c_str());
-                ImportAddress2(pwallet, address, addr);
-                return(1);
-            }
-        }
-        fprintf(stderr,"%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),IsValidDestination(address));
-    }
     return(-1);
 }
 
