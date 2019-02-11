@@ -270,7 +270,7 @@ int32_t komodo_importaddress(std::string addr)
             else
             {
                 //printf("komodo_importaddress %s\n",addr.c_str());
-                ImportAddress2(pwallet, address, addr);
+                ImportAddress(pwallet, address, addr);
                 return(1);
             }
         }
