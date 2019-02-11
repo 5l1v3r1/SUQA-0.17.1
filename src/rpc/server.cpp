@@ -263,6 +263,7 @@ int32_t getera(int now)
            return(i);
        }
    }
+   return(0);
 }
  
 static UniValue getiguanajson(const JSONRPCRequest& jsonRequest)
