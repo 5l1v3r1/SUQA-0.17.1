@@ -45,7 +45,8 @@ int tx_height( const uint256 &hash ){
     int nHeight = 0;
     CTransactionRef tx;
     uint256 hashBlock;
-    if (!GetTransaction(hash, tx, hashBlock, true)) {
+    const Consensus::Params consensusParams;
+    if (!GetTransaction(hash, tx, consensusParams, hashBlock, true)) {
         fprintf(stderr,"tx hash %s does not exist!\n", hash.ToString().c_str() );
     }
 
