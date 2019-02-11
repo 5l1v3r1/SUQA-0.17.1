@@ -56,6 +56,7 @@
 #include <wallet/wallet.h>
 #include <base58.h>
 #include <komodo_notaries.h>
+#include <testnet_notaries.h>
 #include <key_io.h>
 
 char ASSETCHAINS_SYMBOL[65] = { "SUQA" };
@@ -80,7 +81,8 @@ typedef union _bits256 bits256;
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
+
+extern int32_t komodo_importaddress(std::string addr);
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -120,33 +122,6 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     }
     else if ( tx != 0 )
         fprintf(stderr,"gettxout_scriptPubKey ht.%d n.%d > voutsize.%d\n",height,n,(int32_t)tx->vout.size());
-    return(-1);
-}
-int32_t komodo_importaddress(std::string addr)
-{
-    const CTxDestination& address = DecodeDestination(addr);
-    std::shared_ptr<CWallet> const wallet = GetWallets()[0];
-    CWallet* const pwallet = wallet.get();
-    if ( pwallet != 0 )
-    {
-        LOCK2(cs_main, pwallet->cs_wallet);
-        if ( IsValidDestination(address) )
-        {
-            isminetype mine = IsMine(*pwallet, address);
-            if ( (mine & ISMINE_SPENDABLE) != 0 || (mine & ISMINE_WATCH_ONLY) != 0 )
-            {
-                //printf("komodo_importaddress %s already there\n",EncodeDestination(address).c_str());
-                return(0);
-            }
-            else
-            {
-                //printf("komodo_importaddress %s\n",addr.c_str());
-                ImportAddress(pwallet, address, addr);
-                return(1);
-            }
-        }
-        fprintf(stderr,"%s -> komodo_importaddress failed valid.%d\n",addr.c_str(),IsValidDestination(address));
-    }
     return(-1);
 }
 
@@ -688,6 +663,56 @@ uint256 komodo_calcMoM(int32_t height,int32_t MoMdepth)
     return(*(uint256 *)&MoM);
 }
 
+int32_t STAKED_era(int timestamp)
+{
+    if (timestamp <= STAKED_NOTARIES_TIMESTAMP[0])
+        return(1);
+    for (int32_t i = 1; i < NUM_STAKED_ERAS; i++)
+    {
+        if (timestamp <= STAKED_NOTARIES_TIMESTAMP[i] && timestamp >= (STAKED_NOTARIES_TIMESTAMP[i-1] + STAKED_ERA_GAP))
+            return(i+1);
+    }
+  // if we are in a gap, return era 0, this allows to invalidate notarizations when in GAP.
+  return(0);
+};
+
+int8_t numStakedNotaries(uint8_t pubkeys[64][33],int8_t era) {
+    int i; int8_t retval = 0;
+    static uint8_t staked_pubkeys[NUM_STAKED_ERAS][64][33],didinit[NUM_STAKED_ERAS];
+    static char ChainName[65];
+
+    if ( ChainName[0] == 0 )
+    {
+        if ( ASSETCHAINS_SYMBOL[0] == 0 )
+            strcpy(ChainName,"KMD");
+        else
+            strcpy(ChainName,ASSETCHAINS_SYMBOL);
+    }
+
+    if ( era == 0 )
+    {
+        // era is zero so we need to null out the pubkeys.
+        memset(pubkeys,0,64 * 33);
+        printf("%s is a STAKED chain and is in an ERA GAP.\n",ChainName);
+        return(64);
+    }
+    else
+    {
+        if ( didinit[era-1] == 0 )
+        {
+            for (i=0; i<num_notaries_STAKED[era-1]; i++) {
+                decode_hex(staked_pubkeys[era-1][i],33,(char *)notaries_STAKED[era-1][i][1]);
+            }
+            didinit[era-1] = 1;
+            printf("%s is a STAKED chain in era %i \n",ChainName,era);
+        }
+        memcpy(pubkeys,staked_pubkeys[era-1],num_notaries_STAKED[era-1] * 33);
+        retval = num_notaries_STAKED[era-1];
+    }
+    return(retval);
+}
+
+
 int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestamp)
 {
     static uint8_t elected_pubkeys0[64][33],elected_pubkeys1[64][33],did0,did1; static int32_t n0,n1;
@@ -696,7 +721,7 @@ int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestam
         timestamp = komodo_heightstamp(height);
     else if ( ASSETCHAINS_SYMBOL[0] == 0 )
         timestamp = 0;
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOL[0] != 0 && TESTNET == 0 )
     {
         if ( (timestamp != 0 && timestamp <= KOMODO_NOTARIES_TIMESTAMP1) || (ASSETCHAINS_SYMBOL[0] == 0 && height <= KOMODO_NOTARIES_HEIGHT1) )
         {
@@ -726,6 +751,16 @@ int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestam
             memcpy(pubkeys,elected_pubkeys1,n1 * 33);
             return(n1);
         }
+    }
+    else if ( TESTNET == 1 && timestamp != 0 )
+    {
+        // here we can activate our pubkeys for testnet
+        int32_t staked_era; int8_t numSN;
+        uint8_t staked_pubkeys[64][33];
+        staked_era = STAKED_era(timestamp);
+        numSN = numStakedNotaries(staked_pubkeys,staked_era);
+        memcpy(pubkeys,staked_pubkeys,numSN * 33);
+        return(numSN);
     }
     return(-1);
 }

@@ -53,7 +53,10 @@
 
 #define MICRO 0.000001
 #define MILLI 0.001
-#include "komodo_validation017.h"
+//#include "komodo_validation017.h"
+void komodo_disconnect(CBlockIndex *pindex,CBlock *block);
+void komodo_connectblock(CBlockIndex *pindex,CBlock& block);
+int32_t komodo_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 hash);
 
 CScript devScript;
 
