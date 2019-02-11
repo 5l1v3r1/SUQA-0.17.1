@@ -81,7 +81,16 @@ typedef union _bits256 bits256;
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-void ImportAddress(CWallet* const pwallet, const CTxDestination& dest, const std::string& strLabel);
+
+void ImportScript(CWallet* const pwallet, const CScript& script, const std::string& strLabel, bool isRedeemScript);
+void ImportAddress2(CWallet* const pwallet, const CTxDestination& dest, const std::string& strLabel) 
+{
+    CScript script = GetScriptForDestination(dest);
+    ImportScript(pwallet, script, strLabel, false);
+    // add to address book or update label
+    if (IsValidDestination(dest))
+        pwallet->SetAddressBook(dest, strLabel, "receive");
+}
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -143,7 +152,7 @@ int32_t komodo_importaddress(std::string addr)
             else
             {
                 //printf("komodo_importaddress %s\n",addr.c_str());
-                ImportAddress(pwallet, address, addr);
+                ImportAddress2(pwallet, address, addr);
                 return(1);
             }
         }
