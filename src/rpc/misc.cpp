@@ -46,7 +46,7 @@ int32_t getera(int now)
 UniValue getiguanajson(const UniValue& params, bool fHelp)
 {
    if (fHelp || params.size() != 0)
-     throw runtime_error("getiguanajson\nreturns json for iguana, for the current ERA.");
+    throw std::runtime_error("getiguanajson\nreturns json for iguana, for the current ERA.");
 
    UniValue json(UniValue::VOBJ);
    UniValue seeds(UniValue::VARR);
