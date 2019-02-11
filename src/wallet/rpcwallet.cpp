@@ -51,8 +51,8 @@ int tx_height( const uint256 &hash ){
 
     BlockMap::const_iterator it = mapBlockIndex.find(hashBlock);
     if (it != mapBlockIndex.end()) {
-        nHeight = it->second->GetHeight();
-        fprintf(stderr,"blockHash %s height %d\n",hashBlock.ToString().c_str(), nHeight);
+        nHeight = it->second->nHeight;
+        //fprintf(stderr,"blockHash %s height %d\n",hashBlock.ToString().c_str(), nHeight);
     } else {
         fprintf(stderr,"block hash %s does not exist!\n", hashBlock.ToString().c_str() );
     }
@@ -2021,11 +2021,15 @@ static void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const
         }
     }
 
+    int nConfs = wtx.GetDepthInMainChain();
     // Filter by dpowconfs, so returned data is all notarized
-    int nHeight = tx_height(wtx.GetHash());
-    int nDepth  = komodo_dpowconfs(nHeight, wtx.GetDepthInMainChain());
+    if (nMinDepth > 1) {
+        int nHeight = tx_height(wtx.GetHash());
+        nConfs = komodo_dpowconfs(nHeight, nConfs);
+    }
+
     // Received
-    if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+    if (listReceived.size() > 0 && nConfs >= nMinDepth)
     {
         for (const COutputEntry& r : listReceived)
         {
