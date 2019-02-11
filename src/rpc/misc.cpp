@@ -72,6 +72,12 @@ static UniValue validateaddress(const JSONRPCRequest& request)
         if (HasWallets() && IsDeprecatedRPCEnabled("validateaddress")) {
             ret.pushKVs(getaddressinfo(request));
         }
+        std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
+        CWallet* const pwallet = wallet.get();
+        if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+            return NullUniValue;
+        }
+        LOCK(pwallet->cs_wallet);
         isminetype mine = IsMine(*pwallet, dest);
         ret.pushKV("ismine", bool(mine & ISMINE_SPENDABLE));
 #endif
