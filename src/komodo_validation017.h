@@ -56,6 +56,7 @@
 #include <wallet/wallet.h>
 #include <base58.h>
 #include <komodo_notaries.h>
+#include <testnet_notaries.h>
 #include <key_io.h>
 
 char ASSETCHAINS_SYMBOL[65] = { "SUQA" };
