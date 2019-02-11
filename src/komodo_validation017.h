@@ -124,7 +124,7 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     return(-1);
 }
 
-extern static void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
+static void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
 
 int32_t komodo_importaddress(std::string addr)
 {
