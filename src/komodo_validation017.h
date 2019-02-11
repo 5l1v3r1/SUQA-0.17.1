@@ -81,7 +81,7 @@ typedef union _bits256 bits256;
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-extern void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
+static void ImportAddress(CWallet* const pwallet, const CTxDestination& dest, const std::string& strLabel)
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
