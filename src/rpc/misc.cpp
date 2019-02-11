@@ -72,6 +72,8 @@ static UniValue validateaddress(const JSONRPCRequest& request)
         if (HasWallets() && IsDeprecatedRPCEnabled("validateaddress")) {
             ret.pushKVs(getaddressinfo(request));
         }
+        isminetype mine = IsMine(*pwallet, dest);
+        ret.pushKV("ismine", bool(mine & ISMINE_SPENDABLE));
 #endif
         if (ret["address"].isNull()) {
             std::string currentAddress = EncodeDestination(dest);
