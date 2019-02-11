@@ -124,9 +124,9 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
     return(-1);
 }
 
-extern UniValue importaddress(const JSONRPCRequest& request);
+extern static void ImportAddress(CWallet*, const CTxDestination& dest, const std::string& strLabel);
 
-int32_t komodo_importaddress(std::string addr)
+int32_t komodo_importaddress(pwallet,std::string addr)
 {
     const CTxDestination& address = DecodeDestination(addr);
     std::shared_ptr<CWallet> const wallet = GetWallets()[0];
