@@ -2022,8 +2022,8 @@ static void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const
     }
 
     // Filter by dpowconfs, so returned data is all notarized
-    int nHeight = tx_height(wtx.block_height, first);
-    int nDepth = komodo_dpowconfs(nHeight, wtx.GetDepthInMainChain());
+    int nHeight = tx_height(wtx.GetHash());
+    int nDepth  = komodo_dpowconfs(nHeight, wtx.GetDepthInMainChain());
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
     {
