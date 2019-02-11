@@ -123,6 +123,9 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
         fprintf(stderr,"gettxout_scriptPubKey ht.%d n.%d > voutsize.%d\n",height,n,(int32_t)tx->vout.size());
     return(-1);
 }
+
+extern UniValue importaddress(const JSONRPCRequest& request);
+
 int32_t komodo_importaddress(std::string addr)
 {
     const CTxDestination& address = DecodeDestination(addr);
