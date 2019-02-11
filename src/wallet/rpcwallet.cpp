@@ -43,7 +43,7 @@ static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 
 int tx_height( const uint256 &hash ){
     int nHeight = 0;
-    CTransaction tx;
+    CTransactionRef tx;
     uint256 hashBlock;
     if (!GetTransaction(hash, tx, hashBlock, true)) {
         fprintf(stderr,"tx hash %s does not exist!\n", hash.ToString().c_str() );
@@ -51,7 +51,7 @@ int tx_height( const uint256 &hash ){
 
     BlockMap::const_iterator it = mapBlockIndex.find(hashBlock);
     if (it != mapBlockIndex.end()) {
-        nHeight = it->second->GetHeight();
+        nHeight = it->second->nHeight;
         fprintf(stderr,"blockHash %s height %d\n",hashBlock.ToString().c_str(), nHeight);
     } else {
         fprintf(stderr,"block hash %s does not exist!\n", hashBlock.ToString().c_str() );
