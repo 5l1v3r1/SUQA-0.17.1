@@ -146,6 +146,10 @@ CAmount getBonusForAmount(int periods, CAmount theAmount)
 
 CAmount getRateForAmount(int periods, CAmount theAmount)
 {
+    // dont accept negative timespan/amounts
+    if (periods <= 0 || theAmount <= 0)
+        return 0;
+
     CBigNum amount256(theAmount);
     CBigNum rate256(rateTable[periods]);
     CBigNum rate0256(rateTable[0]);
@@ -181,13 +185,8 @@ CAmount GetInterest(CAmount nValue, int outputBlockHeight, int valuationHeight, 
 
     int blocks=0;
 
-    if(maturationBlock>0){
+    if(maturationBlock>0)
         blocks=std::min(THIRTYDAYS,maturationBlock-outputBlockHeight);
-        if(valuationHeight>=THEUNFORKENING){
-            blocks=std::min(blocks,maturationBlock-outputBlockHeight);
-            blocks=std::max(blocks,0);
-        }
-    }
 
     CAmount standardInterest=getRateForAmount(blocks, nValue);
 

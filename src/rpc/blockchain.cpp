@@ -42,6 +42,7 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include "komodo_rpcblockchain.h"
 
 struct CUpdatedBlock
 {
@@ -52,6 +53,7 @@ struct CUpdatedBlock
 static std::mutex cs_blockchange;
 static std::condition_variable cond_blockchange;
 static CUpdatedBlock latestblock;
+int32_t komodo_dpowconfs(int32_t height,int32_t numconfs);
 
 /* Calculate the difficulty for a given block index.
  */
@@ -89,7 +91,8 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     // Only report confirmations if the block is on the main chain
     if (chainActive.Contains(blockindex))
         confirmations = chainActive.Height() - blockindex->nHeight + 1;
-    result.pushKV("confirmations", confirmations);
+    result.pushKV("rawconfirmations", confirmations);
+    result.pushKV("confirmations", komodo_dpowconfs(blockindex->nHeight,confirmations));
     result.pushKV("height", blockindex->nHeight);
     result.pushKV("version", blockindex->nVersion);
     result.pushKV("versionHex", strprintf("%08x", blockindex->nVersion));
@@ -119,7 +122,8 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     // Only report confirmations if the block is on the main chain
     if (chainActive.Contains(blockindex))
         confirmations = chainActive.Height() - blockindex->nHeight + 1;
-    result.pushKV("confirmations", confirmations);
+    result.pushKV("rawconfirmations", confirmations);
+    result.pushKV("confirmations", komodo_dpowconfs(blockindex->nHeight,confirmations));
     result.pushKV("strippedsize", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS));
     result.pushKV("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
     result.pushKV("weight", (int)::GetBlockWeight(block));
@@ -690,7 +694,8 @@ static UniValue getblockheader(const JSONRPCRequest& request)
             "\nResult (for verbose = true):\n"
             "{\n"
             "  \"hash\" : \"hash\",     (string) the block hash (same as provided)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
+            "  \"confirmations\" : n,   (numeric) The number of notarized confirmations, or -1 if the block is not on the main chain\n"
+            "  \"rawconfirmations\" : n,   (numeric) The number of raw confirmations, or -1 if the block is not on the main chain\n"
             "  \"height\" : n,          (numeric) The block height or index\n"
             "  \"version\" : n,         (numeric) The block version\n"
             "  \"versionHex\" : \"00000000\", (string) The block version formatted in hexadecimal\n"
@@ -772,7 +777,8 @@ static UniValue getblock(const JSONRPCRequest& request)
             "\nResult (for verbosity = 1):\n"
             "{\n"
             "  \"hash\" : \"hash\",     (string) the block hash (same as provided)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
+            "  \"confirmations\" : n,   (numeric) The number of notarized confirmations, or -1 if the block is not on the main chain\n"
+            "  \"rawconfirmations\" : n,   (numeric) The number of raw confirmations, or -1 if the block is not on the main chain\n"
             "  \"size\" : n,            (numeric) The block size\n"
             "  \"strippedsize\" : n,    (numeric) The block size excluding witness data\n"
             "  \"weight\" : n           (numeric) The block weight as defined in BIP 141\n"
@@ -1000,6 +1006,139 @@ static UniValue gettxoutsetinfo(const JSONRPCRequest& request)
     return ret;
 }
 
+struct CTermDepositStats
+{
+	int nAddress;
+	uint64_t nTransactions;
+	CAmount nTotalAmount;
+
+	CAmount n1day;
+	CAmount n2days;
+	CAmount n7days;
+	CAmount n14days;
+	CAmount n30days;
+	CAmount nMore30days;
+
+	CTermDepositStats() : nAddress(0), nTransactions(0), nTotalAmount(0), n1day(0), n2days(0), n7days(0), n14days(0), n30days(0), nMore30days(0) {}
+};
+
+static void ApplyTimeLockedStats(CTermDepositStats &stats, 	std::set<uint160> &addresses, const std::map<uint32_t, Coin>& outputs)
+{
+	assert(!outputs.empty());
+
+	CAmount nNumberTxAmount = 0;
+	CAmount nValueAmount = 0;
+	//std::set<uint160> addresses;
+	for (const auto& output : outputs) {
+			std::vector<std::vector<unsigned char>> vSolutions;
+			txnouttype whichType;
+			const CScript& prevScript = output.second.out.scriptPubKey;
+			Solver(prevScript, whichType, vSolutions);
+			if ( whichType == TX_CHECKLOCKTIMEVERIFY && output.second.out.scriptPubKey.GetTermDepositReleaseBlock()>chainActive.Height())
+			{
+				stats.nTransactions++;
+				nNumberTxAmount += 1;
+				nValueAmount += output.second.out.nValue;
+				addresses.insert(uint160(vSolutions[0]));
+				int nBlockMatured = output.second.out.scriptPubKey.GetTermDepositReleaseBlock() - chainActive.Height();
+				if (nBlockMatured <= 720){
+					stats.n1day += output.second.out.nValue;
+				} else if (720 < nBlockMatured && nBlockMatured <= 1440){
+					stats.n2days += output.second.out.nValue;
+				} else if (1440 < nBlockMatured && nBlockMatured <= 5040){
+					stats.n7days += output.second.out.nValue;
+				} else if (5040 < nBlockMatured && nBlockMatured <= 10080){
+					stats.n14days += output.second.out.nValue;
+				} else if (10080 < nBlockMatured && nBlockMatured <= 21600){
+					stats.n30days += output.second.out.nValue;
+				} else {
+					stats.nMore30days += output.second.out.nValue;
+				}
+			}
+	}
+	stats.nAddress = addresses.size();
+    stats.nTotalAmount += nValueAmount;
+}
+
+//! Calculate statistics about the TimeLocked transaction
+static bool GetTimeLockedStats(CCoinsView *view, CTermDepositStats &stats)
+{
+    std::unique_ptr<CCoinsViewCursor> pcursor(view->Cursor());
+    assert(pcursor);
+
+	uint256 prevkey;
+	std::map<uint32_t, Coin> outputs;
+	std::set<uint160> addresses;
+
+	while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+        COutPoint key;
+        Coin coin;
+        if (pcursor->GetKey(key) && pcursor->GetValue(coin)) {
+			if (!outputs.empty() && key.hash != prevkey) {
+				ApplyTimeLockedStats(stats, addresses, outputs);
+                outputs.clear();
+			}
+			prevkey = key.hash;
+            outputs[key.n] = std::move(coin);
+        } else {
+            return error("%s: unable to read value", __func__);
+        }
+        pcursor->Next();
+    }
+
+    if (!outputs.empty()) {
+        ApplyTimeLockedStats(stats, addresses, outputs);
+    }
+
+    return true;
+}
+
+static UniValue gettermdepositstats (const JSONRPCRequest& request)
+{
+if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "gettermdepositstats\n"
+            "\nReturns the stats of all term deposits\n"
+            "\nResult:\n"
+            "[\n"
+			"  \"nAddress\"  (Number) number of address\n"
+            "  \"nTimeLockedTxs\"  (Number) the total number of TimeLocked Tx\n"
+            "  \"nTotalTimeLockedValue\"  (number) the total SUQA locked on all wallets\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("gettermdepositstats", "")
+            + HelpExampleRpc("gettermdepositstats", "")
+        );
+
+    UniValue ret(UniValue::VOBJ);
+	UniValue distribution(UniValue::VARR);
+
+    CTermDepositStats stats;
+    FlushStateToDisk();
+	if (GetTimeLockedStats(pcoinsdbview.get(), stats)) {
+		UniValue obj(UniValue::VOBJ);
+        ret.pushKV("nAddress", (int)stats.nAddress);
+        ret.pushKV("nTimeLockedTxs", (int64_t)stats.nTransactions);
+        ret.pushKV("nTotalTimeLockedValue", ValueFromAmount(stats.nTotalAmount));
+
+		obj.pushKV("1day", ValueFromAmount(stats.n1day));
+		obj.pushKV("2days", ValueFromAmount(stats.n2days));
+		obj.pushKV("7days", ValueFromAmount(stats.n7days));
+		obj.pushKV("14days", ValueFromAmount(stats.n14days));
+		obj.pushKV("30days", ValueFromAmount(stats.n30days));
+		obj.pushKV("More30days", ValueFromAmount(stats.nMore30days));
+
+		distribution.push_back(obj);
+
+		ret.pushKV("distribution", distribution);
+
+    } else {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Unable to read UTXO set");
+    }
+	return ret;
+}
+
 UniValue gettxout(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 3)
@@ -1014,7 +1153,8 @@ UniValue gettxout(const JSONRPCRequest& request)
             "\nResult:\n"
             "{\n"
             "  \"bestblock\":  \"hash\",    (string) The hash of the block at the tip of the chain\n"
-            "  \"confirmations\" : n,       (numeric) The number of confirmations\n"
+            "  \"confirmations\" : n,       (numeric) The number of notarized confirmations\n"
+            "  \"rawconfirmations\" : n,    (numeric) The number of raw confirmations\n"
             "  \"value\" : x.xxx,           (numeric) The transaction value in " + CURRENCY_UNIT + "\n"
             "  \"scriptPubKey\" : {         (json object)\n"
             "     \"asm\" : \"code\",       (string) \n"
@@ -1067,8 +1207,11 @@ UniValue gettxout(const JSONRPCRequest& request)
     ret.pushKV("bestblock", pindex->GetBlockHash().GetHex());
     if (coin.nHeight == MEMPOOL_HEIGHT) {
         ret.pushKV("confirmations", 0);
+        ret.pushKV("rawconfirmations", 0);
     } else {
-        ret.pushKV("confirmations", (int64_t)(pindex->nHeight - coin.nHeight + 1));
+        int64_t confirmations = (int64_t)(pindex->nHeight - coin.nHeight + 1);
+        ret.pushKV("rawconfirmations", confirmations);
+        ret.pushKV("confirmations", komodo_dpowconfs(pindex->nHeight,confirmations));
     }
     ret.pushKV("value", ValueFromAmount(coin.out.nValue));
     UniValue o(UniValue::VOBJ);
@@ -1233,8 +1376,16 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
         );
 
     LOCK(cs_main);
-
+    int32_t komodo_prevMoMheight();
+    extern uint256 NOTARIZED_HASH,NOTARIZED_DESTTXID,NOTARIZED_MOM;
+    extern int32_t NOTARIZED_HEIGHT,NOTARIZED_MOMDEPTH;
     UniValue obj(UniValue::VOBJ);
+    obj.pushKV("notarizedhash",         NOTARIZED_HASH.GetHex());
+    obj.pushKV("notarizedtxid",         NOTARIZED_DESTTXID.GetHex());
+    obj.pushKV("notarized",             (int)NOTARIZED_HEIGHT);
+    obj.pushKV("prevMoMheight",         (int)komodo_prevMoMheight());
+    obj.pushKV("notarized_MoMdepth",    (int)NOTARIZED_MOMDEPTH);
+    obj.pushKV("notarized_MoM",         NOTARIZED_MOM.GetHex());
     obj.pushKV("chain",                 Params().NetworkIDString());
     obj.pushKV("blocks",                (int)chainActive.Height());
     obj.pushKV("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1);
@@ -2205,6 +2356,8 @@ static const CRPCCommand commands[] =
 
     { "blockchain",         "preciousblock",          &preciousblock,          {"blockhash"} },
     { "blockchain",         "scantxoutset",           &scantxoutset,           {"action", "scanobjects"} },
+    { "blockchain",         "calc_MoM",               &calc_MoM,               {"height", "MoMdepth"}  },
+    { "blockchain",         "height_MoM",             &height_MoM,             {"height"}  },
 
     /* Not shown in help */
     { "hidden",             "invalidateblock",        &invalidateblock,        {"blockhash"} },
@@ -2213,6 +2366,8 @@ static const CRPCCommand commands[] =
     { "hidden",             "waitforblock",           &waitforblock,           {"blockhash","timeout"} },
     { "hidden",             "waitforblockheight",     &waitforblockheight,     {"height","timeout"} },
     { "hidden",             "syncwithvalidationinterfacequeue", &syncwithvalidationinterfacequeue, {} },
+	/*stats*/
+	{ "stats",              "gettermdepositstats",    &gettermdepositstats,    {} },
 };
 
 void RegisterBlockchainRPCCommands(CRPCTable &t)
